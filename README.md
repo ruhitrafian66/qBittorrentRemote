@@ -50,7 +50,7 @@ A native iOS app to remotely manage qBittorrent-nox-static over HTTP. Built with
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/qBittorrentRemote.git
+   git clone https://github.com/ruhitrafian66/qBittorrentRemote.git
    cd qBittorrentRemote
    ```
 
