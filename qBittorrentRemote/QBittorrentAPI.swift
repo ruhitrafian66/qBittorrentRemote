@@ -168,7 +168,7 @@ class QBittorrentAPI: ObservableObject {
         await performAction(endpoint: "/api/v2/torrents/resume", body: "hashes=all")
     }
     
-    func removeMissingFilesTorrents() async {
+    func removeMissingFilesTorrents(deleteFiles: Bool = false) async {
         // Get all torrents with missingFiles state
         let missingTorrents = torrents.filter { $0.state.lowercased() == "missingfiles" }
         
@@ -177,11 +177,11 @@ class QBittorrentAPI: ObservableObject {
             return
         }
         
-        print("🗑️ Removing \(missingTorrents.count) torrents with missing files")
+        print("🗑️ Removing \(missingTorrents.count) torrents with missing files (deleteFiles: \(deleteFiles))")
         
-        // Delete each torrent (without deleting files)
+        // Delete each torrent
         for torrent in missingTorrents {
-            await deleteTorrent(hash: torrent.hash, deleteFiles: false)
+            await deleteTorrent(hash: torrent.hash, deleteFiles: deleteFiles)
         }
         
         // Refresh the list

@@ -145,7 +145,7 @@ struct TorrentListView: View {
                         Button(role: .destructive) {
                             showRemoveMissingConfirm = true
                         } label: {
-                            Label("Remove Missing Files", systemImage: "trash")
+                            Label("Remove Missing Torrents", systemImage: "trash")
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -179,16 +179,21 @@ struct TorrentListView: View {
             .sheet(item: $selectedTorrent) { torrent in
                 TorrentDetailView(torrent: torrent, api: api)
             }
-            .confirmationDialog("Remove Missing Files", isPresented: $showRemoveMissingConfirm) {
-                Button("Remove All Missing", role: .destructive) {
+            .confirmationDialog("Remove Missing Torrents", isPresented: $showRemoveMissingConfirm) {
+                Button("Torrent Only", role: .destructive) {
                     Task {
-                        await api.removeMissingFilesTorrents()
+                        await api.removeMissingFilesTorrents(deleteFiles: false)
+                    }
+                }
+                Button("Torrent + Files", role: .destructive) {
+                    Task {
+                        await api.removeMissingFilesTorrents(deleteFiles: true)
                     }
                 }
                 Button("Cancel", role: .cancel) { }
             } message: {
                 let count = api.torrents.filter { $0.state.lowercased() == "missingfiles" }.count
-                Text("This will remove \(count) torrent(s) with missing files. The torrent data will be deleted but files on disk will remain.")
+                Text("Found \(count) torrent(s) with missing files. Choose how to remove them.")
             }
         }
     }
