@@ -349,12 +349,44 @@ struct TorrentListView: View {
                     
                     if showAdvancedOptions {
                         Section("Download Settings") {
-                            HStack {
+                            VStack(alignment: .leading, spacing: 8) {
                                 Text("Save Location")
-                                Spacer()
-                                TextField("Default", text: $savePath)
-                                    .multilineTextAlignment(.trailing)
-                                    .foregroundColor(.secondary)
+                                    .font(.subheadline)
+                                
+                                HStack(spacing: 12) {
+                                    Button {
+                                        savePath = "/srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/Server/M"
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "film")
+                                            Text("Movies")
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .tint(savePath.contains("/M") ? .blue : .gray)
+                                    
+                                    Button {
+                                        savePath = "/srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/Server/T"
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "tv")
+                                            Text("TV")
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .tint(savePath.contains("/T") ? .blue : .gray)
+                                }
+                                
+                                if !savePath.isEmpty {
+                                    Text(savePath)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(2)
+                                }
                             }
                             
                             HStack {
