@@ -376,7 +376,9 @@ class QBittorrentAPI: ObservableObject {
                     
                     // Poll for results with status check
                     var attempts = 0
-                    let maxAttempts = 10
+                    let maxAttempts = 15
+                    var lastTotal = 0
+                    var stableCount = 0
                     
                     while attempts < maxAttempts {
                         try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
@@ -398,9 +400,20 @@ class QBittorrentAPI: ObservableObject {
                             
                             print("📊 Status: \(statusStr), Total: \(total)")
                             
-                            if statusStr == "Stopped" && total > 0 {
+                            // Check if results are stable (not increasing)
+                            if total > 0 && total == lastTotal {
+                                stableCount += 1
+                            } else {
+                                stableCount = 0
+                            }
+                            lastTotal = total
+                            
+                            // Get results if stopped OR if we have results and they're stable for 2 checks
+                            if (statusStr == "Stopped" && total > 0) || (total > 0 && stableCount >= 2) {
+                                print("🎯 Fetching \(total) results...")
+                                
                                 // Get results
-                                guard let resultsUrl = URL(string: "\(serverURL)/api/v2/search/results?id=\(searchId)&limit=100") else { break }
+                                guard let resultsUrl = URL(string: "\(serverURL)/api/v2/search/results?id=\(searchId)&limit=200") else { break }
                                 
                                 var resultsRequest = URLRequest(url: resultsUrl)
                                 if let cookie = cookie {
@@ -409,12 +422,12 @@ class QBittorrentAPI: ObservableObject {
                                 
                                 let (resultsData, _) = try await URLSession.shared.data(for: resultsRequest)
                                 let resultsString = String(data: resultsData, encoding: .utf8) ?? ""
-                                print("📋 Results data: \(resultsString.prefix(500))")
+                                print("📋 Results data length: \(resultsString.count) chars")
                                 
                                 if let resultsJson = try? JSONSerialization.jsonObject(with: resultsData) as? [String: Any],
                                    let results = resultsJson["results"] as? [[String: Any]] {
                                     
-                                    print("✅ Found \(results.count) results")
+                                    print("✅ Found \(results.count) results in response")
                                     
                                     var searchResults: [SearchResult] = []
                                     for dict in results {
@@ -445,6 +458,8 @@ class QBittorrentAPI: ObservableObject {
                                     await stopSearch(id: searchId)
                                     
                                     return searchResults
+                                } else {
+                                    print("❌ Failed to parse results JSON")
                                 }
                                 break
                             } else if statusStr == "Stopped" && total == 0 {
@@ -456,6 +471,7 @@ class QBittorrentAPI: ObservableObject {
                         attempts += 1
                     }
                     
+                    print("⏱️ Search timed out or completed")
                     // Stop search if still running
                     await stopSearch(id: searchId)
                 }
