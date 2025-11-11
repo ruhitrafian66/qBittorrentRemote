@@ -47,7 +47,7 @@ struct TorrentListView: View {
         VStack(spacing: 0) {
             // Filter tabs
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     ForEach(TorrentFilter.allCases, id: \.self) { filter in
                         FilterTab(
                             title: filter.rawValue,
@@ -59,8 +59,8 @@ struct TorrentListView: View {
                         }
                     }
                 }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
             .background(Color(uiColor: .systemBackground))
             
@@ -179,26 +179,21 @@ struct TorrentListView: View {
         let isSelected: Bool
         
         var body: some View {
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {
                 Text(title)
-                    .font(.subheadline)
-                    .fontWeight(isSelected ? .semibold : .regular)
+                    .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
                 
                 Text("\(count)")
-                    .font(.caption2)
+                    .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
             .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
+                Capsule()
+                    .fill(isSelected ? Color.accentColor : Color(uiColor: .systemGray6))
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
-            )
-            .foregroundColor(isSelected ? .accentColor : .primary)
+            .foregroundColor(isSelected ? .white : .primary)
         }
     }
     
@@ -206,47 +201,48 @@ struct TorrentListView: View {
         let torrent: Torrent
         
         var body: some View {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(torrent.name)
-                    .font(.headline)
-                    .lineLimit(2)
-                
+            VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Label("\(torrent.progress, specifier: "%.1f")%", systemImage: "arrow.down.circle")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    Text(torrent.name)
+                        .font(.system(size: 15, weight: .medium))
+                        .lineLimit(2)
                     
                     Spacer()
                     
-                    Text(torrent.state)
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(stateColor.opacity(0.2))
-                        .foregroundColor(stateColor)
-                        .cornerRadius(4)
+                    Circle()
+                        .fill(stateColor)
+                        .frame(width: 8, height: 8)
                 }
                 
                 ProgressView(value: torrent.progress, total: 100)
                     .tint(stateColor)
+                    .scaleEffect(y: 0.5)
                 
-                HStack {
-                    Label(formatSpeed(torrent.dlspeed), systemImage: "arrow.down")
-                        .font(.caption2)
-                        .foregroundColor(.blue)
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.down")
+                            .font(.system(size: 10))
+                        Text(formatSpeed(torrent.dlspeed))
+                            .font(.system(size: 11))
+                    }
+                    .foregroundColor(.secondary)
                     
-                    Label(formatSpeed(torrent.upspeed), systemImage: "arrow.up")
-                        .font(.caption2)
-                        .foregroundColor(.green)
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 10))
+                        Text(formatSpeed(torrent.upspeed))
+                            .font(.system(size: 11))
+                    }
+                    .foregroundColor(.secondary)
                     
                     Spacer()
                     
-                    Text(formatSize(torrent.size))
-                        .font(.caption2)
+                    Text("\(torrent.progress, specifier: "%.0f")%")
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
                 }
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 8)
         }
         
         var stateColor: Color {
