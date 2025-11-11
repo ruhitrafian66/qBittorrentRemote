@@ -4,12 +4,17 @@ struct Torrent: Identifiable, Codable {
     let hash: String
     let name: String
     let size: Int64
-    let progress: Double
+    let progress: Double  // 0.0 to 1.0 from API
     let dlspeed: Int64
     let upspeed: Int64
     let state: String
     
     var id: String { hash }
+    
+    // Convert progress to percentage (0-100)
+    var progressPercentage: Double {
+        return progress * 100
+    }
 }
 
 struct TorrentFile: Identifiable, Codable {

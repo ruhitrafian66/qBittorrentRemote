@@ -20,7 +20,7 @@ enum TorrentFilter: String, CaseIterable {
         case .paused:
             return state.contains("paused")
         case .completed:
-            return torrent.progress >= 100
+            return torrent.progressPercentage >= 100
         case .active:
             return torrent.dlspeed > 0 || torrent.upspeed > 0
         }
@@ -237,7 +237,7 @@ struct TorrentListView: View {
                     .lineLimit(2)
                 
                 HStack {
-                    Label("\(torrent.progress, specifier: "%.1f")%", systemImage: "arrow.down.circle")
+                    Label("\(torrent.progressPercentage, specifier: "%.1f")%", systemImage: "arrow.down.circle")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
@@ -252,7 +252,7 @@ struct TorrentListView: View {
                         .cornerRadius(4)
                 }
                 
-                ProgressView(value: torrent.progress, total: 100)
+                ProgressView(value: torrent.progressPercentage, total: 100)
                     .tint(stateColor)
                 
                 HStack {
@@ -276,6 +276,8 @@ struct TorrentListView: View {
         
         var formattedState: String {
             let state = torrent.state.lowercased()
+            let isComplete = torrent.progressPercentage >= 100
+            
             switch state {
             case "downloading":
                 return "Downloading"
@@ -284,14 +286,14 @@ struct TorrentListView: View {
             case "seeding":
                 return "Seeding"
             case "pauseddl":
-                return "Paused"
+                return isComplete ? "Paused (Complete)" : "Paused"
             case "pausedup":
-                return "Paused"
+                return "Paused (Complete)"
             case "queueddl":
-                return "Queued"
+                return isComplete ? "Queued (Complete)" : "Queued"
             case "queuedup":
-                return "Queued"
-            case "stalleddl":  // Fixed case
+                return "Queued (Complete)"
+            case "stalleddl":
                 return "Stalled"
             case "stalledup":
                 return "Seeding (Stalled)"
@@ -549,15 +551,17 @@ struct TorrentListView: View {
         
         var formattedState: String {
             let state = torrent.state.lowercased()
+            let isComplete = torrent.progressPercentage >= 100
+            
             switch state {
             case "downloading": return "Downloading"
             case "uploading": return "Uploading"
             case "seeding": return "Seeding"
-            case "pauseddl": return "Paused"
-            case "pausedup": return "Paused"
-            case "queueddl": return "Queued"
-            case "queuedup": return "Queued"
-            case "stalleddl": return "Stalled"  // Fixed case
+            case "pauseddl": return isComplete ? "Paused (Complete)" : "Paused"
+            case "pausedup": return "Paused (Complete)"
+            case "queueddl": return isComplete ? "Queued (Complete)" : "Queued"
+            case "queuedup": return "Queued (Complete)"
+            case "stalleddl": return "Stalled"
             case "stalledup": return "Seeding (Stalled)"
             case "checkingdl": return "Checking"
             case "checkingup": return "Checking"
@@ -578,7 +582,7 @@ struct TorrentListView: View {
                     Section("Information") {
                         DetailRow(label: "Name", value: torrent.name)
                         DetailRow(label: "State", value: formattedState)
-                        DetailRow(label: "Progress", value: String(format: "%.2f%%", torrent.progress))
+                        DetailRow(label: "Progress", value: String(format: "%.2f%%", torrent.progressPercentage))
                         DetailRow(label: "Size", value: formatSize(torrent.size))
                         DetailRow(label: "Download Speed", value: formatSpeed(torrent.dlspeed))
                         DetailRow(label: "Upload Speed", value: formatSpeed(torrent.upspeed))
