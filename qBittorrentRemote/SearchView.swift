@@ -10,6 +10,7 @@ struct SearchView: View {
     @State private var selectedCategory = "all"
     @State private var errorMessage = ""
     @State private var showError = false
+    @State private var hasSearched = false
     @Environment(\.dismiss) var dismiss
     
     let categories = ["all", "movies", "tv", "music", "games", "anime", "software", "books"]
@@ -72,7 +73,7 @@ struct SearchView: View {
                             .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if searchResults.isEmpty && !searchQuery.isEmpty {
+                } else if hasSearched && searchResults.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 48))
@@ -91,7 +92,7 @@ struct SearchView: View {
                         .buttonStyle(.bordered)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if searchResults.isEmpty {
+                } else if !hasSearched {
                     VStack(spacing: 12) {
                         Image(systemName: "magnifyingglass.circle")
                             .font(.system(size: 48))
@@ -150,6 +151,7 @@ struct SearchView: View {
         guard !searchQuery.isEmpty else { return }
         
         isSearching = true
+        hasSearched = true
         searchResults = []
         Task {
             let results = await api.searchTorrents(query: searchQuery, category: selectedCategory)
