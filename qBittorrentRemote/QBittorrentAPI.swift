@@ -169,25 +169,66 @@ class QBittorrentAPI: ObservableObject {
     }
     
     func addTorrentURL(_ urlString: String) async -> Bool {
-        guard let url = URL(string: "\(serverURL)/api/v2/torrents/add") else { return false }
+        return await addTorrentWithOptions(url: urlString)
+    }
+    
+    func addTorrentWithOptions(
+        url: String,
+        savePath: String? = nil,
+        category: String? = nil,
+        sequentialDownload: Bool = false,
+        firstLastPiecePriority: Bool = false,
+        skipHashCheck: Bool = false,
+        paused: Bool = false
+    ) async -> Bool {
+        guard let apiUrl = URL(string: "\(serverURL)/api/v2/torrents/add") else { return false }
         
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: apiUrl)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         if let cookie = cookie {
             request.setValue(cookie, forHTTPHeaderField: "Cookie")
         }
         
-        let body = "urls=\(urlString)"
+        var bodyComponents = ["urls=\(url)"]
+        
+        if let savePath = savePath, !savePath.isEmpty {
+            bodyComponents.append("savepath=\(savePath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? savePath)")
+        }
+        
+        if let category = category, !category.isEmpty {
+            bodyComponents.append("category=\(category.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? category)")
+        }
+        
+        if sequentialDownload {
+            bodyComponents.append("sequentialDownload=true")
+        }
+        
+        if firstLastPiecePriority {
+            bodyComponents.append("firstLastPiecePrio=true")
+        }
+        
+        if skipHashCheck {
+            bodyComponents.append("skip_checking=true")
+        }
+        
+        if paused {
+            bodyComponents.append("paused=true")
+        }
+        
+        let body = bodyComponents.joined(separator: "&")
         request.httpBody = body.data(using: .utf8)
+        
+        print("🔧 Adding torrent with options: \(body)")
         
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
             if let httpResponse = response as? HTTPURLResponse {
+                print("📡 Add torrent response: \(httpResponse.statusCode)")
                 return httpResponse.statusCode == 200
             }
         } catch {
-            print("Add torrent error: \(error)")
+            print("❌ Add torrent error: \(error)")
         }
         return false
     }
@@ -300,7 +341,10 @@ class QBittorrentAPI: ObservableObject {
     
     func searchTorrents(query: String, category: String = "all") async -> [SearchResult] {
         // Start search
-        guard let startUrl = URL(string: "\(serverURL)/api/v2/search/start") else { return [] }
+        guard let startUrl = URL(string: "\(serverURL)/api/v2/search/start") else {
+            print("❌ Invalid start URL")
+            return []
+        }
         
         var request = URLRequest(url: startUrl)
         request.httpMethod = "POST"
@@ -312,58 +356,112 @@ class QBittorrentAPI: ObservableObject {
         let body = "pattern=\(query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query)&plugins=enabled&category=\(category)"
         request.httpBody = body.data(using: .utf8)
         
+        print("🔍 Starting search for: \(query)")
+        
         do {
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.shared.data(for: request)
             
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let searchId = json["id"] as? Int {
+            if let httpResponse = response as? HTTPURLResponse {
+                print("📡 Search start response: \(httpResponse.statusCode)")
+            }
+            
+            let responseString = String(data: data, encoding: .utf8) ?? ""
+            print("📄 Response: \(responseString)")
+            
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                print("📦 JSON: \(json)")
                 
-                // Wait a bit for results
-                try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-                
-                // Get results
-                guard let resultsUrl = URL(string: "\(serverURL)/api/v2/search/results?id=\(searchId)") else { return [] }
-                
-                var resultsRequest = URLRequest(url: resultsUrl)
-                if let cookie = cookie {
-                    resultsRequest.setValue(cookie, forHTTPHeaderField: "Cookie")
-                }
-                
-                let (resultsData, _) = try await URLSession.shared.data(for: resultsRequest)
-                
-                if let resultsJson = try? JSONSerialization.jsonObject(with: resultsData) as? [String: Any],
-                   let results = resultsJson["results"] as? [[String: Any]] {
+                if let searchId = json["id"] as? Int {
+                    print("✅ Search ID: \(searchId)")
                     
-                    var searchResults: [SearchResult] = []
-                    for dict in results {
-                        if let fileName = dict["fileName"] as? String,
-                           let fileUrl = dict["fileUrl"] as? String,
-                           let fileSize = dict["fileSize"] as? Int64,
-                           let nbSeeders = dict["nbSeeders"] as? Int,
-                           let nbLeechers = dict["nbLeechers"] as? Int,
-                           let siteUrl = dict["siteUrl"] as? String,
-                           let descrLink = dict["descrLink"] as? String {
-                            let result = SearchResult(
-                                fileName: fileName,
-                                fileUrl: fileUrl,
-                                fileSize: fileSize,
-                                nbSeeders: nbSeeders,
-                                nbLeechers: nbLeechers,
-                                siteUrl: siteUrl,
-                                descrLink: descrLink
-                            )
-                            searchResults.append(result)
+                    // Poll for results with status check
+                    var attempts = 0
+                    let maxAttempts = 10
+                    
+                    while attempts < maxAttempts {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                        
+                        // Check status
+                        guard let statusUrl = URL(string: "\(serverURL)/api/v2/search/status?id=\(searchId)") else { break }
+                        
+                        var statusRequest = URLRequest(url: statusUrl)
+                        if let cookie = cookie {
+                            statusRequest.setValue(cookie, forHTTPHeaderField: "Cookie")
                         }
+                        
+                        let (statusData, _) = try await URLSession.shared.data(for: statusRequest)
+                        
+                        if let statusJson = try? JSONSerialization.jsonObject(with: statusData) as? [[String: Any]],
+                           let status = statusJson.first,
+                           let statusStr = status["status"] as? String,
+                           let total = status["total"] as? Int {
+                            
+                            print("📊 Status: \(statusStr), Total: \(total)")
+                            
+                            if statusStr == "Stopped" && total > 0 {
+                                // Get results
+                                guard let resultsUrl = URL(string: "\(serverURL)/api/v2/search/results?id=\(searchId)&limit=100") else { break }
+                                
+                                var resultsRequest = URLRequest(url: resultsUrl)
+                                if let cookie = cookie {
+                                    resultsRequest.setValue(cookie, forHTTPHeaderField: "Cookie")
+                                }
+                                
+                                let (resultsData, _) = try await URLSession.shared.data(for: resultsRequest)
+                                let resultsString = String(data: resultsData, encoding: .utf8) ?? ""
+                                print("📋 Results data: \(resultsString.prefix(500))")
+                                
+                                if let resultsJson = try? JSONSerialization.jsonObject(with: resultsData) as? [String: Any],
+                                   let results = resultsJson["results"] as? [[String: Any]] {
+                                    
+                                    print("✅ Found \(results.count) results")
+                                    
+                                    var searchResults: [SearchResult] = []
+                                    for dict in results {
+                                        if let fileName = dict["fileName"] as? String,
+                                           let fileUrl = dict["fileUrl"] as? String {
+                                            let fileSize = (dict["fileSize"] as? Int64) ?? (dict["fileSize"] as? Int).map { Int64($0) } ?? 0
+                                            let nbSeeders = (dict["nbSeeders"] as? Int) ?? 0
+                                            let nbLeechers = (dict["nbLeechers"] as? Int) ?? 0
+                                            let siteUrl = (dict["siteUrl"] as? String) ?? ""
+                                            let descrLink = (dict["descrLink"] as? String) ?? ""
+                                            
+                                            let result = SearchResult(
+                                                fileName: fileName,
+                                                fileUrl: fileUrl,
+                                                fileSize: fileSize,
+                                                nbSeeders: nbSeeders,
+                                                nbLeechers: nbLeechers,
+                                                siteUrl: siteUrl,
+                                                descrLink: descrLink
+                                            )
+                                            searchResults.append(result)
+                                        }
+                                    }
+                                    
+                                    print("✅ Parsed \(searchResults.count) results")
+                                    
+                                    // Stop search
+                                    await stopSearch(id: searchId)
+                                    
+                                    return searchResults
+                                }
+                                break
+                            } else if statusStr == "Stopped" && total == 0 {
+                                print("⚠️ Search stopped with no results")
+                                break
+                            }
+                        }
+                        
+                        attempts += 1
                     }
                     
-                    // Stop search
+                    // Stop search if still running
                     await stopSearch(id: searchId)
-                    
-                    return searchResults
                 }
             }
         } catch {
-            print("Search error: \(error)")
+            print("❌ Search error: \(error)")
         }
         return []
     }

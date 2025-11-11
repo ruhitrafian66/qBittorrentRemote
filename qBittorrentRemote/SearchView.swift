@@ -8,6 +8,8 @@ struct SearchView: View {
     @State private var isSearching = false
     @State private var showPluginManager = false
     @State private var selectedCategory = "all"
+    @State private var errorMessage = ""
+    @State private var showError = false
     @Environment(\.dismiss) var dismiss
     
     let categories = ["all", "movies", "tv", "music", "games", "anime", "software", "books"]
@@ -77,9 +79,16 @@ struct SearchView: View {
                             .foregroundColor(.gray)
                         Text("No results found")
                             .foregroundColor(.secondary)
-                        Text("Try different keywords")
+                        Text("Try different keywords or check if search plugins are installed")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                        
+                        Button("Check Plugins") {
+                            showPluginManager = true
+                        }
+                        .buttonStyle(.bordered)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if searchResults.isEmpty {
@@ -122,8 +131,17 @@ struct SearchView: View {
             .sheet(isPresented: $showPluginManager) {
                 PluginManagerView(api: api)
             }
+            .alert("Search Info", isPresented: $showError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
+            }
             .task {
                 plugins = await api.getSearchPlugins()
+                if plugins.isEmpty {
+                    errorMessage = "No search plugins found. Install plugins in qBittorrent Web UI under Tools > Search > Search plugins."
+                    showError = true
+                }
             }
         }
     }
@@ -132,9 +150,15 @@ struct SearchView: View {
         guard !searchQuery.isEmpty else { return }
         
         isSearching = true
+        searchResults = []
         Task {
-            searchResults = await api.searchTorrents(query: searchQuery, category: selectedCategory)
+            let results = await api.searchTorrents(query: searchQuery, category: selectedCategory)
+            searchResults = results
             isSearching = false
+            
+            if results.isEmpty {
+                print("⚠️ No results returned from search")
+            }
         }
     }
 }
@@ -143,6 +167,7 @@ struct SearchResultRow: View {
     let result: SearchResult
     @ObservedObject var api: QBittorrentAPI
     @State private var isAdding = false
+    @State private var showAddOptions = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -168,14 +193,7 @@ struct SearchResultRow: View {
             
             HStack {
                 Button {
-                    isAdding = true
-                    Task {
-                        let success = await api.addTorrentURL(result.fileUrl)
-                        isAdding = false
-                        if success {
-                            await api.fetchTorrents()
-                        }
-                    }
+                    showAddOptions = true
                 } label: {
                     if isAdding {
                         ProgressView()
@@ -198,6 +216,14 @@ struct SearchResultRow: View {
             }
         }
         .padding(.vertical, 4)
+        .sheet(isPresented: $showAddOptions) {
+            AddTorrentOptionsView(
+                torrentURL: result.fileUrl,
+                torrentName: result.fileName,
+                api: api,
+                isAdding: $isAdding
+            )
+        }
     }
     
     func formatSize(_ size: Int64) -> String {
@@ -231,6 +257,106 @@ struct CategoryChip: View {
                     .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 1)
             )
             .foregroundColor(isSelected ? .accentColor : .primary)
+    }
+}
+
+struct AddTorrentOptionsView: View {
+    let torrentURL: String
+    let torrentName: String
+    @ObservedObject var api: QBittorrentAPI
+    @Binding var isAdding: Bool
+    @Environment(\.dismiss) var dismiss
+    
+    @State private var savePath: String = ""
+    @State private var category: String = ""
+    @State private var sequentialDownload = false
+    @State private var firstLastPiecePriority = false
+    @State private var skipHashCheck = false
+    @State private var startPaused = false
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Torrent") {
+                    Text(torrentName)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Section("Download Settings") {
+                    HStack {
+                        Text("Save Location")
+                        Spacer()
+                        TextField("Default", text: $savePath)
+                            .multilineTextAlignment(.trailing)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Category")
+                        Spacer()
+                        TextField("None", text: $category)
+                            .multilineTextAlignment(.trailing)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Section("Download Options") {
+                    Toggle("Sequential Download", isOn: $sequentialDownload)
+                    Toggle("First/Last Piece Priority", isOn: $firstLastPiecePriority)
+                    Toggle("Skip Hash Check", isOn: $skipHashCheck)
+                    Toggle("Start Paused", isOn: $startPaused)
+                }
+                
+                Section {
+                    Text("Sequential download is useful for media files that you want to preview while downloading.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Section {
+                    Button("Add Torrent") {
+                        isAdding = true
+                        Task {
+                            let success = await api.addTorrentWithOptions(
+                                url: torrentURL,
+                                savePath: savePath.isEmpty ? nil : savePath,
+                                category: category.isEmpty ? nil : category,
+                                sequentialDownload: sequentialDownload,
+                                firstLastPiecePriority: firstLastPiecePriority,
+                                skipHashCheck: skipHashCheck,
+                                paused: startPaused
+                            )
+                            isAdding = false
+                            if success {
+                                await api.fetchTorrents()
+                                dismiss()
+                            }
+                        }
+                    }
+                    .disabled(isAdding)
+                    
+                    if isAdding {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                            Text("Adding torrent...")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Add Options")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 

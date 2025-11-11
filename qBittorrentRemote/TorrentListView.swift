@@ -289,6 +289,13 @@ struct TorrentListView: View {
         @State private var isAdding = false
         @State private var showError = false
         @State private var errorMessage = ""
+        @State private var savePath: String = ""
+        @State private var category: String = ""
+        @State private var sequentialDownload = false
+        @State private var firstLastPiecePriority = false
+        @State private var skipHashCheck = false
+        @State private var startPaused = false
+        @State private var showAdvancedOptions = false
         
         var body: some View {
             NavigationView {
@@ -309,11 +316,77 @@ struct TorrentListView: View {
                         }
                     }
                     
+                    Section("Quick Actions") {
+                        Button {
+                            if let clipboardString = UIPasteboard.general.string {
+                                torrentURL = clipboardString
+                            }
+                        } label: {
+                            Label("Paste from Clipboard", systemImage: "doc.on.clipboard")
+                        }
+                        
+                        Button(role: .destructive) {
+                            torrentURL = ""
+                        } label: {
+                            Label("Clear", systemImage: "xmark.circle")
+                        }
+                        .disabled(torrentURL.isEmpty)
+                    }
+                    
+                    Section {
+                        Button {
+                            showAdvancedOptions.toggle()
+                        } label: {
+                            HStack {
+                                Label("Advanced Options", systemImage: "gearshape")
+                                Spacer()
+                                Image(systemName: showAdvancedOptions ? "chevron.up" : "chevron.down")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    
+                    if showAdvancedOptions {
+                        Section("Download Settings") {
+                            HStack {
+                                Text("Save Location")
+                                Spacer()
+                                TextField("Default", text: $savePath)
+                                    .multilineTextAlignment(.trailing)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            HStack {
+                                Text("Category")
+                                Spacer()
+                                TextField("None", text: $category)
+                                    .multilineTextAlignment(.trailing)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Section("Download Options") {
+                            Toggle("Sequential Download", isOn: $sequentialDownload)
+                            Toggle("First/Last Piece Priority", isOn: $firstLastPiecePriority)
+                            Toggle("Skip Hash Check", isOn: $skipHashCheck)
+                            Toggle("Start Paused", isOn: $startPaused)
+                        }
+                    }
+                    
                     Section {
                         Button("Add Torrent") {
                             isAdding = true
                             Task {
-                                let success = await api.addTorrentURL(torrentURL)
+                                let success = await api.addTorrentWithOptions(
+                                    url: torrentURL,
+                                    savePath: savePath.isEmpty ? nil : savePath,
+                                    category: category.isEmpty ? nil : category,
+                                    sequentialDownload: sequentialDownload,
+                                    firstLastPiecePriority: firstLastPiecePriority,
+                                    skipHashCheck: skipHashCheck,
+                                    paused: startPaused
+                                )
                                 isAdding = false
                                 if success {
                                     await api.fetchTorrents()
@@ -335,23 +408,6 @@ struct TorrentListView: View {
                                 Spacer()
                             }
                         }
-                    }
-                    
-                    Section("Quick Actions") {
-                        Button {
-                            if let clipboardString = UIPasteboard.general.string {
-                                torrentURL = clipboardString
-                            }
-                        } label: {
-                            Label("Paste from Clipboard", systemImage: "doc.on.clipboard")
-                        }
-                        
-                        Button(role: .destructive) {
-                            torrentURL = ""
-                        } label: {
-                            Label("Clear", systemImage: "xmark.circle")
-                        }
-                        .disabled(torrentURL.isEmpty)
                     }
                 }
                 .navigationTitle("Add Torrent")
