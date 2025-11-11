@@ -37,10 +37,29 @@ struct TorrentListView: View {
     @State private var showRemoveMissingConfirm = false
     
     var filteredTorrents: [Torrent] {
-        api.torrents.filter { torrent in
+        let filtered = api.torrents.filter { torrent in
             let matchesFilter = selectedFilter.matches(torrent)
             let matchesSearch = searchText.isEmpty || torrent.name.localizedCaseInsensitiveContains(searchText)
             return matchesFilter && matchesSearch
+        }
+        
+        // Sort: downloading first, then by name
+        return filtered.sorted { torrent1, torrent2 in
+            let state1 = torrent1.state.lowercased()
+            let state2 = torrent2.state.lowercased()
+            
+            let isDownloading1 = state1.contains("downloading") || state1 == "stalleddl" || state1 == "metadl" || state1 == "forceddl"
+            let isDownloading2 = state2.contains("downloading") || state2 == "stalleddl" || state2 == "metadl" || state2 == "forceddl"
+            
+            // Downloading torrents come first
+            if isDownloading1 && !isDownloading2 {
+                return true
+            } else if !isDownloading1 && isDownloading2 {
+                return false
+            }
+            
+            // Within same category, sort by name
+            return torrent1.name.localizedCaseInsensitiveCompare(torrent2.name) == .orderedAscending
         }
     }
     
