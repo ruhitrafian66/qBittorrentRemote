@@ -172,35 +172,26 @@ struct SearchResultRow: View {
     @State private var showAddOptions = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(result.fileName)
-                .font(.system(size: 14, weight: .medium))
+                .font(.subheadline)
                 .lineLimit(2)
             
-            HStack(spacing: 12) {
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 6, height: 6)
-                    Text("\(result.nbSeeders)")
-                        .font(.system(size: 11))
-                }
+            HStack {
+                Label("\(result.nbSeeders)", systemImage: "arrow.up.circle.fill")
+                    .font(.caption)
+                    .foregroundColor(.green)
                 
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 6, height: 6)
-                    Text("\(result.nbLeechers)")
-                        .font(.system(size: 11))
-                }
+                Label("\(result.nbLeechers)", systemImage: "arrow.down.circle.fill")
+                    .font(.caption)
+                    .foregroundColor(.red)
                 
                 Spacer()
                 
                 Text(formatSize(result.fileSize))
-                    .font(.system(size: 11))
+                    .font(.caption)
                     .foregroundColor(.secondary)
             }
-            .foregroundColor(.secondary)
             
             HStack {
                 Button {
@@ -208,30 +199,25 @@ struct SearchResultRow: View {
                 } label: {
                     if isAdding {
                         ProgressView()
-                            .scaleEffect(0.7)
+                            .scaleEffect(0.8)
                     } else {
-                        HStack(spacing: 4) {
-                            Image(systemName: "plus")
-                            Text("Add")
-                        }
-                        .font(.system(size: 12, weight: .medium))
+                        Label("Add", systemImage: "plus.circle.fill")
+                            .font(.caption)
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                .buttonStyle(.bordered)
                 .disabled(isAdding)
                 
                 if let url = URL(string: result.descrLink) {
                     Link(destination: url) {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 12))
+                        Label("Details", systemImage: "info.circle")
+                            .font(.caption)
                     }
                     .buttonStyle(.bordered)
-                    .controlSize(.small)
                 }
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 4)
         .sheet(isPresented: $showAddOptions) {
             AddTorrentOptionsView(
                 torrentURL: result.fileUrl,
@@ -260,14 +246,19 @@ struct CategoryChip: View {
     
     var body: some View {
         Text(title)
-            .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+            .font(.caption)
+            .fontWeight(isSelected ? .semibold : .regular)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(
-                Capsule()
-                    .fill(isSelected ? Color.accentColor : Color(uiColor: .systemGray6))
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(isSelected ? Color.accentColor.opacity(0.15) : Color(uiColor: .systemGray6))
             )
-            .foregroundColor(isSelected ? .white : .primary)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 1)
+            )
+            .foregroundColor(isSelected ? .accentColor : .primary)
     }
 }
 
