@@ -12,6 +12,40 @@ struct Torrent: Identifiable, Codable {
     var id: String { hash }
 }
 
+struct TorrentFile: Identifiable, Codable {
+    let index: Int
+    let name: String
+    let size: Int64
+    let progress: Double
+    let priority: Int
+    let availability: Double
+    
+    var id: Int { index }
+}
+
+struct SearchPlugin: Identifiable, Codable {
+    let name: String
+    let version: String
+    let url: String
+    let enabled: Bool
+    let fullName: String
+    let supportedCategories: [String]
+    
+    var id: String { name }
+}
+
+struct SearchResult: Identifiable, Codable {
+    let fileName: String
+    let fileUrl: String
+    let fileSize: Int64
+    let nbSeeders: Int
+    let nbLeechers: Int
+    let siteUrl: String
+    let descrLink: String
+    
+    var id: String { fileUrl }
+}
+
 class QBittorrentAPI: ObservableObject {
     @Published var torrents: [Torrent] = []
     @Published var isConnected = false
@@ -174,6 +208,181 @@ class QBittorrentAPI: ObservableObject {
             await fetchTorrents()
         } catch {
             print("Action error: \(error)")
+        }
+    }
+    
+    // MARK: - File Management
+    
+    func getTorrentFiles(hash: String) async -> [TorrentFile] {
+        guard let url = URL(string: "\(serverURL)/api/v2/torrents/files?hash=\(hash)") else { return [] }
+        
+        var request = URLRequest(url: url)
+        if let cookie = cookie {
+            request.setValue(cookie, forHTTPHeaderField: "Cookie")
+        }
+        
+        do {
+            let (data, _) = try await URLSession.shared.data(for: request)
+            
+            // Parse the response
+            if let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                var files: [TorrentFile] = []
+                for (index, dict) in jsonArray.enumerated() {
+                    if let name = dict["name"] as? String,
+                       let size = dict["size"] as? Int64,
+                       let progress = dict["progress"] as? Double,
+                       let priority = dict["priority"] as? Int,
+                       let availability = dict["availability"] as? Double {
+                        let file = TorrentFile(
+                            index: index,
+                            name: name,
+                            size: size,
+                            progress: progress * 100,
+                            priority: priority,
+                            availability: availability
+                        )
+                        files.append(file)
+                    }
+                }
+                return files
+            }
+        } catch {
+            print("Get files error: \(error)")
+        }
+        return []
+    }
+    
+    func setFilePriority(hash: String, fileIds: [Int], priority: Int) async {
+        let ids = fileIds.map { String($0) }.joined(separator: "|")
+        await performAction(endpoint: "/api/v2/torrents/filePrio", body: "hash=\(hash)&id=\(ids)&priority=\(priority)")
+    }
+    
+    // MARK: - Search
+    
+    func getSearchPlugins() async -> [SearchPlugin] {
+        guard let url = URL(string: "\(serverURL)/api/v2/search/plugins") else { return [] }
+        
+        var request = URLRequest(url: url)
+        if let cookie = cookie {
+            request.setValue(cookie, forHTTPHeaderField: "Cookie")
+        }
+        
+        do {
+            let (data, _) = try await URLSession.shared.data(for: request)
+            
+            if let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                var plugins: [SearchPlugin] = []
+                for dict in jsonArray {
+                    if let name = dict["name"] as? String,
+                       let version = dict["version"] as? String,
+                       let url = dict["url"] as? String,
+                       let enabled = dict["enabled"] as? Bool,
+                       let fullName = dict["fullName"] as? String {
+                        let categories = dict["supportedCategories"] as? [String] ?? []
+                        let plugin = SearchPlugin(
+                            name: name,
+                            version: version,
+                            url: url,
+                            enabled: enabled,
+                            fullName: fullName,
+                            supportedCategories: categories
+                        )
+                        plugins.append(plugin)
+                    }
+                }
+                return plugins
+            }
+        } catch {
+            print("Get plugins error: \(error)")
+        }
+        return []
+    }
+    
+    func searchTorrents(query: String, category: String = "all") async -> [SearchResult] {
+        // Start search
+        guard let startUrl = URL(string: "\(serverURL)/api/v2/search/start") else { return [] }
+        
+        var request = URLRequest(url: startUrl)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        if let cookie = cookie {
+            request.setValue(cookie, forHTTPHeaderField: "Cookie")
+        }
+        
+        let body = "pattern=\(query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query)&plugins=enabled&category=\(category)"
+        request.httpBody = body.data(using: .utf8)
+        
+        do {
+            let (data, _) = try await URLSession.shared.data(for: request)
+            
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let searchId = json["id"] as? Int {
+                
+                // Wait a bit for results
+                try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+                
+                // Get results
+                guard let resultsUrl = URL(string: "\(serverURL)/api/v2/search/results?id=\(searchId)") else { return [] }
+                
+                var resultsRequest = URLRequest(url: resultsUrl)
+                if let cookie = cookie {
+                    resultsRequest.setValue(cookie, forHTTPHeaderField: "Cookie")
+                }
+                
+                let (resultsData, _) = try await URLSession.shared.data(for: resultsRequest)
+                
+                if let resultsJson = try? JSONSerialization.jsonObject(with: resultsData) as? [String: Any],
+                   let results = resultsJson["results"] as? [[String: Any]] {
+                    
+                    var searchResults: [SearchResult] = []
+                    for dict in results {
+                        if let fileName = dict["fileName"] as? String,
+                           let fileUrl = dict["fileUrl"] as? String,
+                           let fileSize = dict["fileSize"] as? Int64,
+                           let nbSeeders = dict["nbSeeders"] as? Int,
+                           let nbLeechers = dict["nbLeechers"] as? Int,
+                           let siteUrl = dict["siteUrl"] as? String,
+                           let descrLink = dict["descrLink"] as? String {
+                            let result = SearchResult(
+                                fileName: fileName,
+                                fileUrl: fileUrl,
+                                fileSize: fileSize,
+                                nbSeeders: nbSeeders,
+                                nbLeechers: nbLeechers,
+                                siteUrl: siteUrl,
+                                descrLink: descrLink
+                            )
+                            searchResults.append(result)
+                        }
+                    }
+                    
+                    // Stop search
+                    await stopSearch(id: searchId)
+                    
+                    return searchResults
+                }
+            }
+        } catch {
+            print("Search error: \(error)")
+        }
+        return []
+    }
+    
+    private func stopSearch(id: Int) async {
+        guard let url = URL(string: "\(serverURL)/api/v2/search/stop") else { return }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        if let cookie = cookie {
+            request.setValue(cookie, forHTTPHeaderField: "Cookie")
+        }
+        request.httpBody = "id=\(id)".data(using: .utf8)
+        
+        do {
+            let (_, _) = try await URLSession.shared.data(for: request)
+        } catch {
+            print("Stop search error: \(error)")
         }
     }
 }

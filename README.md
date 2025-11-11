@@ -17,6 +17,8 @@ A native iOS app to remotely manage qBittorrent-nox-static over HTTP. Built with
 - 🗑️ Delete torrents (with or without files)
 - ➕ Add torrents via URL or magnet link
 - 📱 Swipe actions for quick controls
+- 📂 **Selective file downloads** - Choose which files to download
+- 🔍 **Torrent search** - Search and discover torrents using qBittorrent plugins
 
 ### Organization
 - 🔍 Search torrents by name
@@ -77,14 +79,29 @@ The app is configured to auto-connect with default credentials. You can change t
 ## Usage
 
 ### Adding Torrents
+
+**Method 1: Direct URL/Magnet**
 1. Tap the **+** button in the top right
-2. Paste a magnet link or torrent URL
-3. Tap "Add Torrent"
+2. Select "Add Torrent URL"
+3. Paste a magnet link or torrent URL
+4. Tap "Add Torrent"
+
+**Method 2: Search**
+1. Tap the **+** button in the top right
+2. Select "Search Torrents"
+3. Enter search keywords
+4. Select category filter (optional)
+5. Tap a result to add it directly
 
 ### Managing Torrents
 - **Swipe left** on a torrent for quick actions (pause/resume/delete)
 - **Tap** a torrent to view detailed information
 - Use the **menu** (top left) for bulk actions
+- **Manage Files**: Tap "Manage Files" in torrent details to:
+  - View all files in the torrent
+  - Select/deselect individual files for download
+  - See download progress per file
+  - Bulk select/deselect all files
 
 ### Filtering & Search
 - Tap filter tabs at the top to filter by state
@@ -106,6 +123,12 @@ The app is configured to auto-connect with default credentials. You can change t
 - `/api/v2/torrents/pause` - Pause torrent(s)
 - `/api/v2/torrents/resume` - Resume torrent(s)
 - `/api/v2/torrents/delete` - Delete torrent(s)
+- `/api/v2/torrents/files` - Get torrent files
+- `/api/v2/torrents/filePrio` - Set file priority
+- `/api/v2/search/plugins` - Get search plugins
+- `/api/v2/search/start` - Start search
+- `/api/v2/search/results` - Get search results
+- `/api/v2/search/stop` - Stop search
 
 ## Security Notes
 

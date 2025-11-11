@@ -12,6 +12,8 @@
 		2A5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2A4 /* Assets.xcassets */; };
 		2A7 /* QBittorrentAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6 /* QBittorrentAPI.swift */; };
 		2A9 /* TorrentListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A8 /* TorrentListView.swift */; };
+		2AB /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AA /* SearchView.swift */; };
+		2AD /* TorrentFilesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC /* TorrentFilesView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -21,7 +23,9 @@
 		2A4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2A6 /* QBittorrentAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QBittorrentAPI.swift; sourceTree = "<group>"; };
 		2A8 /* TorrentListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentListView.swift; sourceTree = "<group>"; };
-		2AA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		2AA /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		2AC /* TorrentFilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentFilesView.swift; sourceTree = "<group>"; };
+		2AE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -49,9 +53,11 @@
 				2A0 /* qBittorrentRemoteApp.swift */,
 				2A2 /* ContentView.swift */,
 				2A8 /* TorrentListView.swift */,
+				2AA /* SearchView.swift */,
+				2AC /* TorrentFilesView.swift */,
 				2A6 /* QBittorrentAPI.swift */,
 				2A4 /* Assets.xcassets */,
-				2AA /* Info.plist */,
+				2AE /* Info.plist */,
 			);
 			path = qBittorrentRemote;
 			sourceTree = "<group>";
@@ -137,6 +143,8 @@
 				2A1 /* qBittorrentRemoteApp.swift in Sources */,
 				2A7 /* QBittorrentAPI.swift in Sources */,
 				2A9 /* TorrentListView.swift in Sources */,
+				2AB /* SearchView.swift in Sources */,
+				2AD /* TorrentFilesView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

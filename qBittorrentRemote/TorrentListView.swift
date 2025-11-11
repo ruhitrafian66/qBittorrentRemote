@@ -30,6 +30,7 @@ enum TorrentFilter: String, CaseIterable {
 struct TorrentListView: View {
     @ObservedObject var api: QBittorrentAPI
     @State private var showingAddTorrent = false
+    @State private var showingSearch = false
     @State private var selectedTorrent: Torrent?
     @State private var selectedFilter: TorrentFilter = .all
     @State private var searchText = ""
@@ -145,6 +146,12 @@ struct TorrentListView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button {
+                            showingSearch = true
+                        } label: {
+                            Label("Search Torrents", systemImage: "magnifyingglass")
+                        }
+                        
+                        Button {
                             showingAddTorrent = true
                         } label: {
                             Label("Add Torrent URL", systemImage: "link")
@@ -156,6 +163,9 @@ struct TorrentListView: View {
             }
             .sheet(isPresented: $showingAddTorrent) {
                 AddTorrentView(api: api)
+            }
+            .sheet(isPresented: $showingSearch) {
+                SearchView(api: api)
             }
             .sheet(item: $selectedTorrent) { torrent in
                 TorrentDetailView(torrent: torrent, api: api)
@@ -383,6 +393,12 @@ struct TorrentListView: View {
                     }
                     
                     Section("Actions") {
+                        NavigationLink {
+                            TorrentFilesView(torrentHash: torrent.hash, api: api)
+                        } label: {
+                            Label("Manage Files", systemImage: "doc.on.doc")
+                        }
+                        
                         if torrent.state.lowercased().contains("paused") {
                             Button {
                                 Task {
