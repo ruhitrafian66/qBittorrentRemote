@@ -168,6 +168,26 @@ class QBittorrentAPI: ObservableObject {
         await performAction(endpoint: "/api/v2/torrents/resume", body: "hashes=all")
     }
     
+    func removeMissingFilesTorrents() async {
+        // Get all torrents with missingFiles state
+        let missingTorrents = torrents.filter { $0.state.lowercased() == "missingfiles" }
+        
+        guard !missingTorrents.isEmpty else {
+            print("No torrents with missing files found")
+            return
+        }
+        
+        print("🗑️ Removing \(missingTorrents.count) torrents with missing files")
+        
+        // Delete each torrent (without deleting files)
+        for torrent in missingTorrents {
+            await deleteTorrent(hash: torrent.hash, deleteFiles: false)
+        }
+        
+        // Refresh the list
+        await fetchTorrents()
+    }
+    
     func addTorrentURL(_ urlString: String) async -> Bool {
         return await addTorrentWithOptions(url: urlString)
     }

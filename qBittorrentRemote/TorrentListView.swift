@@ -14,9 +14,9 @@ enum TorrentFilter: String, CaseIterable {
         case .all:
             return true
         case .downloading:
-            return state.contains("downloading") || state.contains("stalledDL")
+            return state.contains("downloading") || state == "stalleddl" || state == "metadl" || state == "forceddl" || state == "queueddl"
         case .seeding:
-            return state.contains("uploading") || state.contains("seeding") || state.contains("stalledUP")
+            return state.contains("uploading") || state.contains("seeding") || state.contains("stalledup") || state == "forcedup" || state == "queuedup"
         case .paused:
             return state.contains("paused")
         case .completed:
@@ -34,6 +34,7 @@ struct TorrentListView: View {
     @State private var selectedTorrent: Torrent?
     @State private var selectedFilter: TorrentFilter = .all
     @State private var searchText = ""
+    @State private var showRemoveMissingConfirm = false
     
     var filteredTorrents: [Torrent] {
         api.torrents.filter { torrent in
@@ -138,6 +139,14 @@ struct TorrentListView: View {
                         } label: {
                             Label("Resume All", systemImage: "play.circle")
                         }
+                        
+                        Divider()
+                        
+                        Button(role: .destructive) {
+                            showRemoveMissingConfirm = true
+                        } label: {
+                            Label("Remove Missing Files", systemImage: "trash")
+                        }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -169,6 +178,17 @@ struct TorrentListView: View {
             }
             .sheet(item: $selectedTorrent) { torrent in
                 TorrentDetailView(torrent: torrent, api: api)
+            }
+            .confirmationDialog("Remove Missing Files", isPresented: $showRemoveMissingConfirm) {
+                Button("Remove All Missing", role: .destructive) {
+                    Task {
+                        await api.removeMissingFilesTorrents()
+                    }
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                let count = api.torrents.filter { $0.state.lowercased() == "missingfiles" }.count
+                Text("This will remove \(count) torrent(s) with missing files. The torrent data will be deleted but files on disk will remain.")
             }
         }
     }
@@ -218,7 +238,7 @@ struct TorrentListView: View {
                     
                     Spacer()
                     
-                    Text(torrent.state)
+                    Text(formattedState)
                         .font(.caption)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -249,13 +269,69 @@ struct TorrentListView: View {
             .padding(.vertical, 4)
         }
         
+        var formattedState: String {
+            let state = torrent.state.lowercased()
+            switch state {
+            case "downloading":
+                return "Downloading"
+            case "uploading":
+                return "Uploading"
+            case "seeding":
+                return "Seeding"
+            case "pauseddl":
+                return "Paused"
+            case "pausedup":
+                return "Paused"
+            case "queueddl":
+                return "Queued"
+            case "queuedup":
+                return "Queued"
+            case "stalleddl":  // Fixed case
+                return "Stalled"
+            case "stalledup":
+                return "Seeding (Stalled)"
+            case "checkingdl":
+                return "Checking"
+            case "checkingup":
+                return "Checking"
+            case "checkingresumedata":
+                return "Checking"
+            case "allocating":
+                return "Allocating"
+            case "metadl":
+                return "Downloading Metadata"
+            case "forceddl":
+                return "Downloading (Forced)"
+            case "forcedup":
+                return "Seeding (Forced)"
+            case "missingfiles":
+                return "Missing Files"
+            case "error":
+                return "Error"
+            default:
+                // Debug: print actual state
+                print("Unknown state: '\(torrent.state)'")
+                return torrent.state.capitalized
+            }
+        }
+        
         var stateColor: Color {
-            switch torrent.state.lowercased() {
-            case "downloading": return .blue
-            case "uploading", "seeding": return .green
-            case "paused", "pausedDL", "pausedUP": return .orange
-            case "error": return .red
-            default: return .gray
+            let state = torrent.state.lowercased()
+            switch state {
+            case "downloading", "forceddl", "metadl":
+                return .blue
+            case "uploading", "seeding", "forcedup", "stalledup":
+                return .green
+            case "pauseddl", "pausedup", "queueddl", "queuedup":
+                return .orange
+            case "stalledDL":
+                return .yellow
+            case "error", "missingfiles":
+                return .red
+            case "checkingdl", "checkingup", "checkingresumedata", "allocating":
+                return .purple
+            default:
+                return .gray
             }
         }
         
@@ -466,12 +542,37 @@ struct TorrentListView: View {
         @Environment(\.dismiss) var dismiss
         @State private var showDeleteConfirm = false
         
+        var formattedState: String {
+            let state = torrent.state.lowercased()
+            switch state {
+            case "downloading": return "Downloading"
+            case "uploading": return "Uploading"
+            case "seeding": return "Seeding"
+            case "pauseddl": return "Paused"
+            case "pausedup": return "Paused"
+            case "queueddl": return "Queued"
+            case "queuedup": return "Queued"
+            case "stalleddl": return "Stalled"  // Fixed case
+            case "stalledup": return "Seeding (Stalled)"
+            case "checkingdl": return "Checking"
+            case "checkingup": return "Checking"
+            case "checkingresumedata": return "Checking"
+            case "allocating": return "Allocating"
+            case "metadl": return "Downloading Metadata"
+            case "forceddl": return "Downloading (Forced)"
+            case "forcedup": return "Seeding (Forced)"
+            case "missingfiles": return "Missing Files"
+            case "error": return "Error"
+            default: return torrent.state.capitalized
+            }
+        }
+        
         var body: some View {
             NavigationView {
                 List {
                     Section("Information") {
                         DetailRow(label: "Name", value: torrent.name)
-                        DetailRow(label: "State", value: torrent.state)
+                        DetailRow(label: "State", value: formattedState)
                         DetailRow(label: "Progress", value: String(format: "%.2f%%", torrent.progress))
                         DetailRow(label: "Size", value: formatSize(torrent.size))
                         DetailRow(label: "Download Speed", value: formatSpeed(torrent.dlspeed))
