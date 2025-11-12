@@ -5,20 +5,20 @@ A native iOS app to remotely manage qBittorrent-nox-static over HTTP. Built with
 ## Features
 
 ### Core Functionality
-- 🔐 Auto-connect with saved credentials
-- 📋 View all torrents with real-time progress
-- ⬇️ Download and upload speed monitoring
-- 📊 File size and progress tracking
-- 🔄 Pull to refresh torrent list
+-  Auto-connect with saved credentials
+-  View all torrents with real-time progress
+-  Download and upload speed monitoring
+-  File size and progress tracking
+-  Pull to refresh torrent list
 
 ### Torrent Management
-- ▶️ Pause/Resume individual torrents
-- ⏸️ Pause/Resume all torrents
-- 🗑️ Delete torrents (with or without files)
-- ➕ Add torrents via URL or magnet link
-- 📱 Swipe actions for quick controls
-- 📂 **Selective file downloads** - Choose which files to download
-- 🔍 **Torrent search** - Search and discover torrents using qBittorrent plugins
+-  Pause/Resume individual torrents
+-  Pause/Resume all torrents
+-  Delete torrents (with or without files)
+-  Add torrents via URL or magnet link
+-  Swipe actions for quick controls
+-  **Selective file downloads** - Choose which files to download
+-  **Torrent search** - Search and discover torrents using qBittorrent plugins
 
 ### Organization
 - 🔍 Search torrents by name
@@ -31,9 +31,9 @@ A native iOS app to remotely manage qBittorrent-nox-static over HTTP. Built with
   - Active (with speed > 0)
 
 ### Details
-- 📝 Detailed torrent information view
-- 🎨 Color-coded states (downloading, seeding, paused, error)
-- 📈 Real-time speed and progress updates
+-  Detailed torrent information view
+-  Color-coded states (downloading, seeding, paused, error)
+-  Real-time speed and progress updates
 
 ## Screenshots
 
