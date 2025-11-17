@@ -521,11 +521,10 @@ struct TorrentListView: View {
                                     skipHashCheck: skipHashCheck,
                                     paused: startPaused
                                 )
-                                isAdding = false
                                 if success {
-                                    await api.fetchTorrents()
                                     dismiss()
                                 } else {
+                                    isAdding = false
                                     errorMessage = "Failed to add torrent. Check the URL/magnet link."
                                     showError = true
                                 }
